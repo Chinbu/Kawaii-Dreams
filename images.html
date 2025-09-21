@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kawaii Dreams</title>
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#f0f0f0}
+header{padding:15px;text-align:center;background:#ff66b2;color:#fff;font-weight:bold;font-size:24px;}
+#searchBar{width:90%;padding:8px;margin:12px auto;display:block;border-radius:8px;border:1px solid #ccc;}
+.post-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;padding:12px;}
+.post-item{background:#fff;border-radius:12px;overflow:hidden;position:relative;box-shadow:0 4px 12px rgba(0,0,0,0.06);}
+.post-item img{width:100%;display:block;}
+.post-item h3{padding:6px;font-size:16px;margin:0;}
+.post-item button{margin:6px;padding:6px;width:calc(50% - 8px);border:none;border-radius:6px;cursor:pointer;font-weight:bold;}
+.watch-btn{background:#ff66b2;color:#fff;}
+.direct-btn{background:#0088cc;color:#fff;}
+.floating-tg{position:fixed;bottom:20px;right:20px;width:50px;height:50px;background:#0088cc;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;cursor:pointer;animation:bounce 2s infinite;}
+@keyframes bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+footer{padding:12px;text-align:center;background:#fff;color:#555;font-size:14px;}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#000;color:#fff;padding:8px 12px;border-radius:6px;opacity:0;transition:0.5s;}
+.toast.show{opacity:1;}
+</style>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<!-- Monetag Telegram Mini App SDK -->
+<script src="//libtl.com/sdk.js" data-zone="9906722" data-sdk="show_9906722"></script>
+
+</head>
+<body>
+<header>Kawaii Dreams</header>
+<input type="text" id="searchBar" placeholder="Search tags...">
+<div class="post-grid" id="postsContainer"></div>
+
+<div class="floating-tg" onclick="window.open('https://t.me/+je3SYj65zM84MzRl')">✈</div>
+<footer>Made by XBI | <a href="https://t.me/+l8Zk3taERx4xZWE1" target="_blank">Contact</a></footer>
+<div id="toast" class="toast">Wait for 3 seconds...</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBvEdciF6GYzOBoWTNKaF-PrjpVtAiMwfc",
+  authDomain: "kawaii-dreams.firebaseapp.com",
+  databaseURL: "https://kawaii-dreams-default-rtdb.firebaseio.com",
+  projectId: "kawaii-dreams",
+  storageBucket: "kawaii-dreams.firebasestorage.app",
+  messagingSenderId: "249963553173",
+  appId: "1:249963553173:web:187a55f3933feea14a169c"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const postsContainer = document.getElementById('postsContainer');
+const searchBar = document.getElementById('searchBar');
+const toast = document.getElementById('toast');
+
+let postsData = [];
+
+async function loadPosts(){
+  const snap = await db.collection('posts').orderBy('createdAt','desc').get();
+  postsData = snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+  displayPosts(postsData);
+}
+
+function displayPosts(posts){
+  postsContainer.innerHTML = '';
+  posts.forEach(p=>{
+    const div = document.createElement('div');
+    div.className = 'post-item';
+    div.innerHTML = `
+      <img src="${p.imageUrl}" alt="${p.title}">
+      <h3>${p.title}</h3>
+      ${p.enableWatchAdsButton?`<button class="watch-btn" onclick='watchAds("${p.id}",${p.requiredAdsToDownload},"${p.originalDownloadURL}")'>Watch Ads</button>`:''}
+      ${p.enableGetDirectLinkButton?`<button class="direct-btn" onclick='directLink("${p.monetagDirectLink}","${p.originalDownloadURL}")'>Get Direct Link</button>`:''}
+      <button onclick='copyShareLink("${p.id}")'>Copy Share Link</button>
+    `;
+    postsContainer.appendChild(div);
+  });
+}
+
+function copyShareLink(postId){
+  const shareLink = `https://t.me/Kawaii_dreams_bot/ani_mix?startapp=${postId}`;
+  navigator.clipboard.writeText(shareLink);
+  alert('Share link copied!');
+}
+
+// Watch Ads function
+async function watchAds(postId,requiredAds,downloadURL){
+  toast.classList.add('show');
+  setTimeout(()=>{ toast.classList.remove('show'); },2000);
+  // Monetag Rewarded Interstitial
+  await show_9906722();
+  // After ads watched, enable download button
+  window.open(downloadURL,'_blank');
+}
+
+// Direct Link function
+function directLink(monetagLink,downloadURL){
+  show_9906722('pop').then(()=>{
+    // Show monetag direct link ad
+    window.open(monetagLink,'_blank');
+  }).catch(()=>{ /* ignore errors */ });
+}
+
+// Search functionality
+searchBar.addEventListener('input', e=>{
+  const val = e.target.value.toLowerCase();
+  const filtered = postsData.filter(p=>p.tags.toLowerCase().includes(val));
+  displayPosts(filtered);
+});
+
+loadPosts();
+</script>
+</body>
+</html>
