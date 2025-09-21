@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Post - Kawaii Dreams</title>
+<style>
+  body{font-family:Inter,Arial;background:#fff;margin:0;padding:12px;color:#111}
+  header{padding:14px;text-align:center;font-weight:700;font-size:20px;border-bottom:1px solid #eee}
+  .card{max-width:760px;margin:18px auto;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.06);overflow:hidden}
+  .img{height:320px;background:#f7f7f7;display:flex;align-items:center;justify-content:center}
+  .img img{width:100%;height:100%;object-fit:cover}
+  .body{padding:12px}
+  .title{font-weight:700;font-size:18px;margin-bottom:6px}
+  .desc{color:#444;margin-bottom:12px}
+  .btn{padding:10px;border-radius:8px;border:none;background:#ff66b2;color:#fff;font-weight:700;cursor:pointer;margin-right:8px}
+  .btn.ghost{background:#fff;color:#ff66b2;border:1px solid #ff66b2}
+  .toast{position:fixed;left:14px;bottom:80px;background:rgba(0,0,0,0.8);color:#fff;padding:8px 12px;border-radius:8px;display:none}
+</style>
+
+<!-- Monetag SDK -->
+<script src="//libtl.com/sdk.js" data-zone="9906722" data-sdk="show_9906722"></script>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+</head>
+<body>
+<header>Kawaii Dreams</header>
+
+<div class="card">
+  <div class="img" id="imgWrap">Loading image...</div>
+  <div class="body" id="bodyWrap">
+    <div class="title" id="postTitle">Loading...</div>
+    <div class="desc" id="postDesc"></div>
+    <div id="controls">
+      <!-- Buttons will be injected here -->
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* Firebase config */
+const firebaseConfig = {
+  apiKey: "AIzaSyBvEdciF6GYzOBoWTNKaF-PrjpVtAiMwfc",
+  authDomain: "kawaii-dreams.firebaseapp.com",
+  databaseURL: "https://kawaii-dreams-default-rtdb.firebaseio.com",
+  projectId: "kawaii-dreams",
+  storageBucket: "kawaii-dreams.firebasestorage.app",
+  messagingSenderId: "249963553173",
+  appId: "1:249963553173:web:187a55f3933feea14a169c"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const toastEl = document.getElementById('toast');
+function showToast(msg,ms=2000){ toastEl.textContent=msg; toastEl.style.display='block'; setTimeout(()=>toastEl.style.display='none',ms); }
+function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* Read startapp param - used to know which post to show */
+function getStartAppParam(){
+  const url = new URL(location.href);
+  const s = url.searchParams.get('startapp');
+  if(s) return s;
+  // fallback: sometimes Telegram deep link variations — try last path segment
+  const seg = location.pathname.split('/').filter(Boolean).pop();
+  return seg || null;
+}
+const postId = getStartAppParam();
+if(!postId) document.getElementById('bodyWrap').innerText = 'No post id provided';
+
+async function load(){
+  const doc = await db.collection('posts').doc(postId).get();
+  if(!doc.exists) { document.getElementById('bodyWrap').innerText='Post not found'; return; }
+  const p = doc.data();
+  document.getElementById('imgWrap').innerHTML = `<img src="${escapeHtml(p.imageUrl||'')}" alt="">`;
+  document.getElementById('postTitle').innerText = p.title || 'Untitled';
+  document.getElementById('postDesc').innerText = p.description || '';
+
+  const controls = document.getElementById('controls');
+  controls.innerHTML = `
+    ${p.enableWatchAdsButton ? `<button id="watchBtn" class="btn">Watch Ads</button>` : ''}
+    ${p.enableGetDirectLinkButton ? `<button id="directBtn" class="btn ghost">Get Direct Link</button>` : ''}
+    <button id="shareBtn" class="btn ghost">Copy Share Link</button>
+    <button id="downloadBtn" class="btn download-btn disabled" style="display:none">Download</button>
+    <div id="adsProgress" style="margin-top:8px;color:#666"></div>
+  `;
+
+  attach(p);
+}
+function attach(p){
+  const watchBtn = document.getElementById('watchBtn');
+  const directBtn = document.getElementById('directBtn');
+  const shareBtn = document.getElementById('shareBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const progress = document.getElementById('adsProgress');
+  const key = `watched_${postId}`;
+  let watched = parseInt(localStorage.getItem(key) || '0',10);
+
+  function updateProgress(){
+    progress.textContent = `Ads watched: ${watched}/${p.requiredAdsToDownload||0}`;
+    if(watched >= (p.requiredAdsToDownload||0)){
+      downloadBtn.style.display='inline-block';
+      downloadBtn.classList.remove('disabled');
+    }
+  }
+  updateProgress();
+
+  if(watchBtn) watchBtn.onclick = async ()=>{
+    try{
+      await show_9906722(); // Monetag rewarded interstitial
+      watched++; localStorage.setItem(key, watched);
+      // hide button, show 3s timer in its place
+      watchBtn.style.display='none';
+      const timer = document.createElement('div'); timer.textContent = 'Next ad will start in 3 seconds...'; timer.style.padding='8px'; timer.style.background='#fafafa'; timer.style.borderRadius='8px'; watchBtn.parentNode.insertBefore(timer, watchBtn);
+      showToast('⏳ Wait for 3 seconds...',2000);
+      let c=3;
+      const iv = setInterval(()=>{
+        c--; if(c>0) timer.textContent = `Next ad will start in ${c} seconds...`; else { clearInterval(iv); timer.remove(); watchBtn.style.display='inline-block'; }
+      },1000);
+      updateProgress();
+      if(watched >= (p.requiredAdsToDownload||0)){
+        showToast('✅ Ads completed! Download unlocked.',2000);
+        setTimeout(()=> { if(confirm('Open download now?')) window.open(p.originalDownloadURL,'_blank'); }, 800);
+      }
+    }catch(e){ console.error(e); alert('Ad cancelled or failed'); }
+  };
+
+  if(directBtn) directBtn.onclick = async ()=>{
+    const directAd = p.monetagDirectLink || 'https://otieu.com/4/9908200';
+    const keyDirect = `direct_count_${postId}`;
+    let cnt = parseInt(localStorage.getItem(keyDirect) || '0',10);
+    try{
+      await show_9906722('pop'); // rewarded popup
+      cnt++; localStorage.setItem(keyDirect, cnt);
+      if(cnt >= 7){
+        window.open(p.originalDownloadURL,'_blank');
+        return;
+      }
+      window.open(directAd,'_blank');
+    }catch(e){
+      console.error(e);
+      window.open(directAd,'_blank');
+    }
+  };
+
+  shareBtn.onclick = ()=> {
+    const share = `https://t.me/Kawaii_dreams_bot/ani_mix?startapp=${postId}`;
+    navigator.clipboard.writeText(share).then(()=> showToast('Share link copied!',1400));
+  };
+
+  downloadBtn.onclick = ()=> {
+    if(downloadBtn.classList.contains('disabled')) { alert('Please complete ads to unlock download'); return; }
+    window.open(p.originalDownloadURL,'_blank');
+  };
+}
+
+load();
+</script>
+</body>
+</html>
