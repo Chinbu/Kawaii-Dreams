@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kawaii Dreams Post</title>
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#f0f0f0;text-align:center;}
+header{padding:15px;background:#ff66b2;color:#fff;font-weight:bold;font-size:24px;}
+img{max-width:90%;border-radius:12px;margin:12px 0;}
+button{padding:10px 12px;margin:6px;border:none;border-radius:6px;font-weight:bold;cursor:pointer;}
+.watch-btn{background:#ff66b2;color:#fff;}
+.direct-btn{background:#0088cc;color:#fff;}
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#000;color:#fff;padding:8px 12px;border-radius:6px;opacity:0;transition:0.5s;}
+#toast.show{opacity:1;}
+.floating-tg{position:fixed;bottom:20px;right:20px;width:50px;height:50px;background:#0088cc;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;cursor:pointer;animation:bounce 2s infinite;}
+@keyframes bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+footer{padding:12px;text-align:center;background:#fff;color:#555;font-size:14px;}
+</style>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<!-- Monetag SDK -->
+<script src="//libtl.com/sdk.js" data-zone="9906722" data-sdk="show_9906722"></script>
+
+</head>
+<body>
+<header>Kawaii Dreams</header>
+<div id="postContainer"></div>
+<div id="toast">Wait for 3 seconds...</div>
+<div class="floating-tg" onclick="window.open('https://t.me/+je3SYj65zM84MzRl')">✈</div>
+<footer>Made by XBI | <a href="https://t.me/+l8Zk3taERx4xZWE1" target="_blank">Contact</a></footer>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBvEdciF6GYzOBoWTNKaF-PrjpVtAiMwfc",
+  authDomain: "kawaii-dreams.firebaseapp.com",
+  databaseURL: "https://kawaii-dreams-default-rtdb.firebaseio.com",
+  projectId: "kawaii-dreams",
+  storageBucket: "kawaii-dreams.firebasestorage.app",
+  messagingSenderId: "249963553173",
+  appId: "1:249963553173:web:187a55f3933feea14a169c"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const urlParams = new URLSearchParams(window.location.search);
+const postId = urlParams.get('startapp');
+const postContainer = document.getElementById('postContainer');
+const toast = document.getElementById('toast');
+
+let postData;
+
+async function loadPost(){
+  const doc = await db.collection('posts').doc(postId).get();
+  if(!doc.exists){ postContainer.innerHTML='Post not found'; return;}
+  postData = doc.data();
+  postContainer.innerHTML=`
+    <img src="${postData.imageUrl}" alt="${postData.title}">
+    <h2>${postData.title}</h2>
+    ${postData.enableWatchAdsButton?`<button class="watch-btn" onclick="watchAds('${postId}',${postData.requiredAdsToDownload},'${postData.originalDownloadURL}')">Watch Ads</button>`:''}
+    ${postData.enableGetDirectLinkButton?`<button class="direct-btn" onclick="directLink('${postData.monetagDirectLink}','${postData.originalDownloadURL}')">Get Direct Link</button>`:''}
+  `;
+}
+
+// Watch Ads function
+async function watchAds(postId,requiredAds,downloadURL){
+  toast.classList.add('show');
+  setTimeout(()=>{ toast.classList.remove('show'); },2000);
+  await show_9906722();
+  window.open(downloadURL,'_blank');
+}
+
+// Direct Link function
+function directLink(monetagLink,downloadURL){
+  show_9906722('pop').then(()=>{
+    window.open(monetagLink,'_blank');
+  }).catch(()=>{});
+}
+
+loadPost();
+</script>
+</body>
+</html>
